@@ -1,14 +1,11 @@
-import { Bot } from "grammy";
+import { Bot, webhookCallback } from "grammy";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import * as dotenv from "dotenv";
-import { createServer } from "http";
-
-dotenv.config();
+import type { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
 
 // Проверка наличия ключей
 if (!process.env.BOT_TOKEN || !process.env.AI_API_KEY) {
-  console.error("ОШИБКА: Не заданы BOT_TOKEN или AI_API_KEY в .env файле");
-  process.exit(1);
+  console.error("ОШИБКА: Не заданы BOT_TOKEN или AI_API_KEY в переменных окружения Lambda");
+  throw new Error("Missing required environment variables");
 }
 
 // Инициализация
@@ -103,33 +100,6 @@ bot.on("message:text", async (ctx) => {
   });
 });
 
-const secretPath = `/bot/${process.env.BOT_TOKEN}`;
-
-const server = createServer((req, res) => {
-  if (req.url === "/webhook") {
-    // Сюда можно будет прикрутить вебхуки в будущем, если захотите
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ status: "ok" }));
-  } else if (req.url === "/healthcheck") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ status: "ok" }));
-  } else {
-    res.writeHead(404, { "Content-Type": "text/plain" });
-    res.end("Not found");
-  }
-});
-
-// Render сам выдает порт через переменную окружения PORT
-const PORT = process.env.PORT || 3000;
-
-server.listen(PORT, () => {
-  console.log(`Fake server listening on port ${PORT}`);
-});
-// ==========================
-
-// Запуск бота (Long Polling)
-bot.start({
-  onStart: (botInfo) => {
-    console.log(`Бот @${botInfo.username} запущен!`);
-  },
-});
+// Создаем webhook handler для AWS Lambda
+// webhookCallback для "aws-lambda" возвращает функцию с правильной сигнатурой Lambda handler
+export const telegramWebhook = webhookCallback(bot, "aws-lambda");

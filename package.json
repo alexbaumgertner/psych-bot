@@ -2,10 +2,12 @@
   "name": "psych-bot",
   "version": "1.0.0",
   "type": "module",
-  "description": "",
-  "main": "index.js",
+  "description": "Telegram psychology bot for AWS Lambda",
+  "main": "dist/bot.js",
   "scripts": {
     "build": "tsc",
+    "build:lambda": "npm run build && npm run package:lambda",
+    "package:lambda": "cd dist && zip -r ../lambda-deployment.zip . && cd ..",
     "start": "node dist/bot.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -14,10 +16,10 @@
   "license": "ISC",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "dotenv": "^17.2.3",
     "grammy": "^1.39.3"
   },
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
     "@types/node": "^25.0.9",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
