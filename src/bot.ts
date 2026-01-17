@@ -1,4 +1,4 @@
-import { Bot, Context } from "grammy";
+import { Bot } from "grammy";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as dotenv from "dotenv";
 import { createServer } from "http";
@@ -58,19 +58,37 @@ bot.on("message:text", async (ctx) => {
   const messageText = ctx.message.text;
   const botInfo = await ctx.api.getMe();
 
-  // Логика для групп: отвечаем только если тегнули бота или это реплай на сообщение бота
-  const isMentioned = messageText.includes(`@${botInfo.username}`);
+  // Проверяем, упомянут ли бот через entities (правильный способ для Telegram)
+  const entities = ctx.message.entities || [];
+  const isMentioned =
+    entities.some(
+      (entity) =>
+        entity.type === "mention" &&
+        messageText.substring(entity.offset, entity.offset + entity.length) ===
+          `@${botInfo.username}`
+    ) ||
+    entities.some((entity) => entity.type === "text_mention" && entity.user?.id === botInfo.id) ||
+    messageText.includes(`@${botInfo.username}`); // Fallback для совместимости
+
+  // Проверяем, является ли это ответом на сообщение бота
   const isReplyToBot = ctx.message.reply_to_message?.from?.id === botInfo.id;
 
+  // В группах отвечаем только если бот упомянут или это ответ на его сообщение
   if (chatType === "group" || chatType === "supergroup") {
-    if (!isMentioned && !isReplyToBot) return; // Игнорируем обычные сообщения в чате
+    if (!isMentioned && !isReplyToBot) {
+      return; // Игнорируем обычные сообщения в чате
+    }
   }
 
   // Показываем статус "печатает..."
   await ctx.replyWithChatAction("typing");
 
   // Очищаем текст от юзернейма бота, если он есть
-  const cleanText = messageText.replace(`@${botInfo.username}`, "").trim();
+  let cleanText = messageText;
+  if (isMentioned) {
+    // Удаляем упоминание бота из текста
+    cleanText = messageText.replace(new RegExp(`@${botInfo.username}\\s*`, "gi"), "").trim();
+  }
 
   if (!cleanText) {
     await ctx.reply("Слушаю вас. Задайте свой вопрос по психологии.");
