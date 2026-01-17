@@ -18,6 +18,9 @@ importers:
         specifier: ^1.39.3
         version: 1.39.3
     devDependencies:
+      '@types/aws-lambda':
+        specifier: ^8.10.145
+        version: 8.10.159
       '@types/node':
         specifier: ^25.0.9
         version: 25.0.9
@@ -193,6 +196,9 @@ packages:
   '@grammyjs/types@3.23.0':
     resolution: {integrity: sha512-D3jQ4UWERPsyR3op/YFudMMIPNTU47vy7L51uO9/73tMELmjO/+LX5N36/Y0CG5IQfIsz43MxiHI5rgsK0/k+g==}
 
+  '@types/aws-lambda@8.10.159':
+    resolution: {integrity: sha512-SAP22WSGNN12OQ8PlCzGzRCZ7QDCwI85dQZbmpz7+mAk+L7j+wI7qnvmdKh+o7A5LaOp6QnOZ2NJphAZQTTHQg==}
+
   '@types/node@25.0.9':
     resolution: {integrity: sha512-/rpCXHlCWeqClNBwUhDcusJxXYDjZTyE8v5oTO7WbL8eij2nKhUeU89/6xgjU7N4/Vh3He0BtyhJdQbDyhiXAw==}
 
@@ -354,6 +360,8 @@ snapshots:
   '@google/generative-ai@0.24.1': {}
 
   '@grammyjs/types@3.23.0': {}
+
+  '@types/aws-lambda@8.10.159': {}
 
   '@types/node@25.0.9':
     dependencies:
