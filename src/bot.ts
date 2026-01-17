@@ -1,6 +1,7 @@
 import { Bot, Context } from "grammy";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as dotenv from "dotenv";
+import { createServer } from "http";
 
 dotenv.config();
 
@@ -84,9 +85,33 @@ bot.on("message:text", async (ctx) => {
   });
 });
 
-// Запуск
+const secretPath = `/bot/${process.env.BOT_TOKEN}`;
+
+const server = createServer((req, res) => {
+  if (req.url === "/webhook") {
+    // Сюда можно будет прикрутить вебхуки в будущем, если захотите
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ status: "ok" }));
+  } else if (req.url === "/healthcheck") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ status: "ok" }));
+  } else {
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Not found");
+  }
+});
+
+// Render сам выдает порт через переменную окружения PORT
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, () => {
+  console.log(`Fake server listening on port ${PORT}`);
+});
+// ==========================
+
+// Запуск бота (Long Polling)
 bot.start({
   onStart: (botInfo) => {
-    console.log(`Бот @${botInfo.username} запущен и готов помогать!`);
+    console.log(`Бот @${botInfo.username} запущен!`);
   },
 });
