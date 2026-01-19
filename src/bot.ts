@@ -5,29 +5,31 @@ import { createServer } from "http";
 
 dotenv.config();
 
-// Проверка наличия ключей
 if (!process.env.BOT_TOKEN || !process.env.AI_API_KEY) {
-  console.error("ОШИБКА: Не заданы BOT_TOKEN или AI_API_KEY в .env файле");
+  console.error("No required environment variables");
   process.exit(1);
 }
 
-// Инициализация
+// Initialization
 const bot = new Bot(process.env.BOT_TOKEN);
 const genAI = new GoogleGenerativeAI(process.env.AI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+const model = genAI.getGenerativeModel({ model: process.env.MODEL || "gemini-3-pro-preview" });
 
-// Системный промпт для настройки личности и ограничений
+// System prompt for setting the personality and limitations
 const SYSTEM_PROMPT = `
-Ты — эмпатичный и профессиональный помощник-психолог. А еще всесторонний и увлекательный собеседник.
-Твоя задача — отвечать на вопросы пользователей, оказывая поддержку и давая базовые рекомендации.
-Правила:
-1. Твои ответы должны быть не длиннее 10 предложений. Лучше в районе 5-7 предложений.
-2. Отвечай объективно с опорой на научные факты и статистику. Можешь использовать неформальный язык.
-3. Если вопрос не касается психологии или ментального здоровья, продолжай разговор как обычный собеседник.
-4. Если предлагают выпить/хулиганить, не отказывался, но окажи поддержку по-дружески: пробуй экологичный выход из ситуации.
-`;
+Ты — эмпатичный и профессиональный помощник-психолог, а также интересный собеседник. 
+Твоя цель — оказывать поддержку, валидировать чувства и давать научно обоснованные рекомендации.
+Твой стиль (Tone of Voice): Теплый, принимающий, но не "слащавый". Ты умеешь читать между строк и замечать скрытые эмоции.
 
-// Функция получения ответа от AI
+Правила:
+Лаконичность: Ответ строго 5–7 предложений. Избегай "воды" и долгих вступлений. Бей точно в суть.
+Экспертность: Опирайся на КПТ (когнитивно-поведенческую терапию) и научные данные. Избегай эзотерики.
+Гибкость: Если тема обычная (не психология) — общайся живо, с юмором и метафорами, как умный друг.
+Безопасность: Если предлагают деструктивное поведение (алкоголь, хулиганство) — не читай морали. 
+Присоединись к эмоции ("понимаю желание разрядиться"), 
+но предложи более здоровую альтернативу или переведи в шутку, мягко уводя от риска.`;
+
+// Function to get the response from AI
 async function getAIResponse(userMessage: string): Promise<string> {
   try {
     const chat = model.startChat({
@@ -47,18 +49,18 @@ async function getAIResponse(userMessage: string): Promise<string> {
     const response = result.response;
     return response.text();
   } catch (error) {
-    console.error("Ошибка AI:", error);
-    return "Извините, сейчас я не могу обдумать ответ. Попробуйте позже.";
+    console.error("AI error:", error);
+    return "Sorry, I'm currently unable to think of an answer. Please try again later.";
   }
 }
 
-// Обработка текстовых сообщений
+// Handling text messages
 bot.on("message:text", async (ctx) => {
   const chatType = ctx.chat.type;
   const messageText = ctx.message.text;
   const botInfo = await ctx.api.getMe();
 
-  // Проверяем, упомянут ли бот через entities (правильный способ для Telegram)
+  // Checking if the bot is mentioned through entities (correct way for Telegram)
   const entities = ctx.message.entities || [];
   const isMentioned =
     entities.some(
@@ -68,25 +70,25 @@ bot.on("message:text", async (ctx) => {
           `@${botInfo.username}`
     ) ||
     entities.some((entity) => entity.type === "text_mention" && entity.user?.id === botInfo.id) ||
-    messageText.includes(`@${botInfo.username}`); // Fallback для совместимости
+    messageText.includes(`@${botInfo.username}`); // Fallback for compatibility
 
-  // Проверяем, является ли это ответом на сообщение бота
+  // Checking if this is a reply to the bot's message
   const isReplyToBot = ctx.message.reply_to_message?.from?.id === botInfo.id;
 
-  // В группах отвечаем только если бот упомянут или это ответ на его сообщение
+  // In groups, we only answer if the bot is mentioned or this is a reply to its message
   if (chatType === "group" || chatType === "supergroup") {
     if (!isMentioned && !isReplyToBot) {
-      return; // Игнорируем обычные сообщения в чате
+      return; // Ignoring normal messages in the chat
     }
   }
 
-  // Показываем статус "печатает..."
+  // Showing the status "typing..."
   await ctx.replyWithChatAction("typing");
 
-  // Очищаем текст от юзернейма бота, если он есть
+  // Cleaning the text from the bot's username, if it exists
   let cleanText = messageText;
   if (isMentioned) {
-    // Удаляем упоминание бота из текста
+    // Removing the mention of the bot from the text
     cleanText = messageText.replace(new RegExp(`@${botInfo.username}\\s*`, "gi"), "").trim();
   }
 
@@ -97,7 +99,7 @@ bot.on("message:text", async (ctx) => {
 
   const aiAnswer = await getAIResponse(cleanText);
 
-  // Отправляем ответ (можно reply, чтобы сохранить контекст нити разговора)
+  // Sending the answer (can reply, to save the context of the conversation thread)
   await ctx.reply(aiAnswer, {
     reply_parameters: { message_id: ctx.msg.message_id },
   });
@@ -105,7 +107,7 @@ bot.on("message:text", async (ctx) => {
 
 const server = createServer((req, res) => {
   if (req.url === "/webhook") {
-    // Сюда можно будет прикрутить вебхуки в будущем, если захотите
+    // Here we can add webhooks in the future, if you want
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ status: "ok" }));
   } else if (req.url === "/healthcheck") {
@@ -117,17 +119,17 @@ const server = createServer((req, res) => {
   }
 });
 
-// Render сам выдает порт через переменную окружения PORT
+// Render itself gives the port through the environment variable PORT
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
-  console.log(`Fake server listening on port ${PORT}`);
+  console.log(`Server listening on port ${PORT}`);
 });
 // ==========================
 
-// Запуск бота (Long Polling)
+// Starting the bot (Long Polling)
 bot.start({
   onStart: (botInfo) => {
-    console.log(`Бот @${botInfo.username} запущен!`);
+    console.log(`Bot @${botInfo.username} started!`);
   },
 });
